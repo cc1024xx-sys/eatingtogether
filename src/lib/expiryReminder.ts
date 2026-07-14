@@ -49,7 +49,7 @@ export async function sendExpiryPushNotification(items: ExpiryAlertItem[]) {
   const body = buildExpiryAlertMessage(items);
   new Notification("小食光 · 今日临期提醒", {
     body,
-    icon: "/icons/icon-192.png",
+    icon: "/apple-touch-icon.png",
     tag: `expiry-${getTodayKey()}`,
   });
 }
