@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 
@@ -20,16 +20,12 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.png", sizes: "32x32", type: "image/png" },
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    // cache-bust so iOS refreshes after icon redesign
     apple: [
-      {
-        url: "/apple-touch-icon.png?v=2",
-        sizes: "180x180",
-        type: "image/png",
-      },
+      { url: "/icons/apple-touch-icon.png", sizes: "180x180" },
+      { url: "/apple-touch-icon.png", sizes: "180x180" },
     ],
   },
   other: {
@@ -37,7 +33,7 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport = {
+export const viewport: Viewport = {
   themeColor: "#F7D070",
 };
 
@@ -48,6 +44,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" className={`${geistSans.variable} h-full antialiased`}>
+      <head>
+        {/* Explicit links without query/type — iOS Safari home-screen compatibility */}
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+        <link
+          rel="apple-touch-icon"
+          sizes="180x180"
+          href="/icons/apple-touch-icon.png"
+        />
+        <link
+          rel="apple-touch-icon-precomposed"
+          href="/icons/apple-touch-icon.png"
+        />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
