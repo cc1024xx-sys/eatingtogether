@@ -7,15 +7,23 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://eatingtogether.vercel.app";
+
 export const metadata: Metadata = {
-  title: "小食光",
-  description: "Love is the secret ingredient.",
+  metadataBase: new URL(siteUrl),
+  title: "小食光 FlavorTogether",
+  description: "面向情侣的治愈系双人食材管理与协同做饭软件",
   manifest: "/manifest.webmanifest",
   applicationName: "小食光",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "小食光",
+  },
+  icons: {
+    icon: [{ url: "/favicon.png", sizes: "32x32", type: "image/png" }],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
   },
 };
 
