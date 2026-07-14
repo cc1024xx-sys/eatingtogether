@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Ingredient {
+  id         String   @id @default(cuid())
+  name       String
+  category   String
+  quantity   Float
+  unit       String   @default("个")
+  expiryDate DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  recipeLinks RecipeIngredient[]
+  restock     RestockItem?
+}
+
+model RestockItem {
+  id           String   @id @default(cuid())
+  name         String
+  checked      Boolean  @default(false)
+  ingredientId String?  @unique
+  ingredient   Ingredient? @relation(fields: [ingredientId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Recipe {
+  id         String   @id @default(cuid())
+  name       String
+  difficulty String
+  duration   Int
+  steps      String
+  imageUrl   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  ingredients RecipeIngredient[]
+  mealPlans   MealPlanItem[]
+}
+
+model RecipeIngredient {
+  id           String  @id @default(cuid())
+  recipeId     String
+  recipe       Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredientId String?
+  ingredient   Ingredient? @relation(fields: [ingredientId], references: [id], onDelete: SetNull)
+  name         String
+  amount       Float
+  unit         String  @default("个")
+}
+
+model MealPlanItem {
+  id        String   @id @default(cuid())
+  date      String
+  mealType  String
+  recipeId  String
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([date, mealType])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  content    String
+  emoji      String?
+  authorName String
+  createdAt  DateTime @default(now())
+}
+
+model SyncState {
+  id        Int      @id @default(1)
+  version   Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
