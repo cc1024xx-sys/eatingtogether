@@ -21,15 +21,19 @@
 1. 打开一键导入链接：  
    [https://vercel.com/new/import?s=https://github.com/cc1024xx-sys/eatingtogether](https://vercel.com/new/import?s=https://github.com/cc1024xx-sys/eatingtogether)
 2. 使用 GitHub 账号登录并授权 Vercel
-3. 选择仓库 `cc1024xx-sys/eatingtogether`，点击 **Deploy**
-4. 部署前或部署失败后，进入项目 **Settings → Environment Variables**，添加：
+3. **先创建 Turso 数据库**（见第二节），再部署
+4. 进入 **eatingtogether 项目**（不是 Team 设置）→ **Settings → Environment Variables**，添加：
 
-| 变量名 | 值 |
-|--------|-----|
-| `DATABASE_URL` | Turso 的 libsql:// 地址 |
-| `TURSO_AUTH_TOKEN` | Turso 的 Auth Token |
+| 变量名 | 值 | 说明 |
+|--------|-----|------|
+| `DATABASE_URL` | `libsql://xxx.turso.io` | Turso 数据库地址 |
+| `TURSO_AUTH_TOKEN` | `eyJ...` | Turso Auth Token |
 
-5. 保存后，进入 **Deployments** 点击 **Redeploy**
+5. **Environments** 勾选：Production、Preview、Development
+6. **Link to Projects** 选择 `eatingtogether`
+7. 保存后 → **Deployments** → **Redeploy**
+
+> ⚠️ 若未配置 `DATABASE_URL` 就部署，构建会失败并提示：`The datasource.url property is required`
 
 ### 方式 B：命令行部署
 
