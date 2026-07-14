@@ -11,7 +11,9 @@ function run(cmd) {
 
 run("npx prisma generate");
 
-if (!process.env.DATABASE_URL) {
+const databaseUrl = process.env.DATABASE_URL ?? "";
+
+if (!databaseUrl) {
   console.error("\n❌ 缺少环境变量 DATABASE_URL");
   console.error("请在 Vercel 项目 Settings → Environment Variables 中添加：");
   console.error("  - DATABASE_URL（Turso libsql:// 地址）");
@@ -20,5 +22,14 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-run("npx prisma migrate deploy");
+if (databaseUrl.startsWith("libsql:")) {
+  if (!process.env.TURSO_AUTH_TOKEN) {
+    console.error("\n❌ Turso 环境缺少 TURSO_AUTH_TOKEN");
+    process.exit(1);
+  }
+  run("node scripts/apply-turso-migrations.mjs");
+} else {
+  run("npx prisma migrate deploy");
+}
+
 run("npx next build");
