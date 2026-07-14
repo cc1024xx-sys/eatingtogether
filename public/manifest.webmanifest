@@ -1,0 +1,29 @@
+{
+  "name": "小食光 FlavorTogether",
+  "short_name": "小食光",
+  "description": "Love is the secret ingredient.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FBF8F3",
+  "theme_color": "#F7D070",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
