@@ -1,21 +1,67 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { BookOpen, Check, Clock, Plus, UtensilsCrossed } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  BookOpen,
+  Cake,
+  Check,
+  ChevronDown,
+  Clock,
+  CupSoda,
+  Home,
+  Pencil,
+  Plus,
+  Search,
+  Star,
+  Trash2,
+  UtensilsCrossed,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { CookingAnimation } from "@/components/kitchen/CookingAnimation";
+import { FavoriteHearts } from "@/components/kitchen/FavoriteHearts";
 import { parseJsonResponse } from "@/lib/api";
 import { useSync } from "@/lib/hooks";
 import {
   DIFFICULTIES,
   MEAL_TYPES,
+  RECIPE_CATEGORIES,
   type Ingredient,
   type MealPlanItem,
   type Recipe,
+  type RecipeCategory,
 } from "@/lib/types";
 import { todayString } from "@/lib/utils";
+
+const RECIPE_CATEGORY_META: Record<
+  RecipeCategory,
+  { icon: LucideIcon; bg: string; iconColor: string }
+> = {
+  快手菜: { icon: Zap, bg: "bg-[#FFF3E0]", iconColor: "text-[#E6A23C]" },
+  家常菜: { icon: Home, bg: "bg-[#E8F5E9]", iconColor: "text-[#5A8F5A]" },
+  招牌菜: { icon: Star, bg: "bg-[#FCE4EC]", iconColor: "text-[#C75B7A]" },
+  甜品: { icon: Cake, bg: "bg-[#F3E5F5]", iconColor: "text-[#9C6BB8]" },
+  酒水饮料: { icon: CupSoda, bg: "bg-[#E3F2FD]", iconColor: "text-[#5B8DB8]" },
+};
+
+function normalizeRecipeCategory(category: string): RecipeCategory {
+  return RECIPE_CATEGORIES.includes(category as RecipeCategory)
+    ? (category as RecipeCategory)
+    : "家常菜";
+}
+
+const EMPTY_RECIPE_FORM = {
+  name: "",
+  category: "家常菜" as RecipeCategory,
+  difficulty: "新手",
+  duration: "30",
+  favorite: 3,
+  steps: "",
+  ingredients: [{ name: "", amount: "1", unit: "个", ingredientId: "" }],
+};
 
 export function KitchenModule() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -24,20 +70,19 @@ export function KitchenModule() {
   const [showRecipeForm, setShowRecipeForm] = useState(false);
   const [showRecipeDetail, setShowRecipeDetail] = useState<Recipe | null>(null);
   const [showMealPicker, setShowMealPicker] = useState<string | null>(null);
+  const [mealPickerSearch, setMealPickerSearch] = useState("");
+  const [mealPickerAllExpanded, setMealPickerAllExpanded] = useState(false);
   const [showShortage, setShowShortage] = useState<{
     mealPlanId: string;
     shortages: string[];
   } | null>(null);
   const [cookingAnim, setCookingAnim] = useState(false);
   const [pendingMealId, setPendingMealId] = useState<string | null>(null);
+  const [expandedRecipeCategory, setExpandedRecipeCategory] =
+    useState<RecipeCategory | null>(null);
+  const [editingRecipeId, setEditingRecipeId] = useState<string | null>(null);
 
-  const [recipeForm, setRecipeForm] = useState({
-    name: "",
-    difficulty: "新手",
-    duration: "30",
-    steps: "",
-    ingredients: [{ name: "", amount: "1", unit: "个", ingredientId: "" }],
-  });
+  const [recipeForm, setRecipeForm] = useState(EMPTY_RECIPE_FORM);
 
   const load = useCallback(async () => {
     try {
@@ -59,41 +104,108 @@ export function KitchenModule() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (!showMealPicker) {
+      setMealPickerSearch("");
+      setMealPickerAllExpanded(false);
+    }
+  }, [showMealPicker]);
+
+  const openMealPicker = (mealType: string) => {
+    setMealPickerSearch("");
+    setMealPickerAllExpanded(false);
+    setShowMealPicker(mealType);
+  };
+
   useSync(load);
 
-  const handleCreateRecipe = async () => {
+  const handleSaveRecipe = async () => {
     if (!recipeForm.name.trim()) return;
-    await fetch("/api/recipes", {
-      method: "POST",
+
+    const savedCategory = recipeForm.category;
+    const payload = {
+      name: recipeForm.name,
+      category: recipeForm.category,
+      difficulty: recipeForm.difficulty,
+      duration: recipeForm.duration,
+      favorite: recipeForm.favorite,
+      steps: recipeForm.steps,
+      ingredients: recipeForm.ingredients
+        .filter((i) => i.name.trim())
+        .map((i) => ({
+          name: i.name,
+          amount: i.amount,
+          unit: i.unit,
+          ingredientId: i.ingredientId || null,
+        })),
+    };
+
+    const res = await fetch("/api/recipes", {
+      method: editingRecipeId ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: recipeForm.name,
-        difficulty: recipeForm.difficulty,
-        duration: recipeForm.duration,
-        steps: recipeForm.steps,
-        ingredients: recipeForm.ingredients
-          .filter((i) => i.name.trim())
-          .map((i) => ({
-            name: i.name,
-            amount: i.amount,
-            unit: i.unit,
-            ingredientId: i.ingredientId || null,
-          })),
-      }),
+      body: JSON.stringify(
+        editingRecipeId ? { id: editingRecipeId, ...payload } : payload
+      ),
     });
-    setRecipeForm({
-      name: "",
-      difficulty: "新手",
-      duration: "30",
-      steps: "",
-      ingredients: [{ name: "", amount: "1", unit: "个", ingredientId: "" }],
-    });
+
+    if (!res.ok) {
+      alert(editingRecipeId ? "更新失败，请稍后重试" : "保存失败，请稍后重试");
+      return;
+    }
+
+    setRecipeForm(EMPTY_RECIPE_FORM);
+    setEditingRecipeId(null);
     setShowRecipeForm(false);
+    setShowRecipeDetail(null);
+    setExpandedRecipeCategory(savedCategory);
+    load();
+  };
+
+  const handleUpdateFavorite = async (recipe: Recipe, favorite: number) => {
+    const res = await fetch("/api/recipes", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: recipe.id, favorite }),
+    });
+
+    if (!res.ok) {
+      alert("更新喜爱度失败，请稍后重试");
+      return;
+    }
+
+    if (showRecipeDetail?.id === recipe.id) {
+      const updated = await parseJsonResponse<Recipe | null>(res, null);
+      if (updated) setShowRecipeDetail(updated);
+    }
+    load();
+  };
+
+  const handleDeleteRecipe = async (recipe: Recipe) => {
+    const confirmed = window.confirm(`确定删除「${recipe.name}」吗？`);
+    if (!confirmed) return;
+
+    const res = await fetch(`/api/recipes?id=${recipe.id}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      alert("删除失败，请稍后重试");
+      return;
+    }
+
+    if (showRecipeDetail?.id === recipe.id) {
+      setShowRecipeDetail(null);
+    }
+    if (editingRecipeId === recipe.id) {
+      setEditingRecipeId(null);
+      setShowRecipeForm(false);
+      setRecipeForm(EMPTY_RECIPE_FORM);
+    }
     load();
   };
 
   const handleSetMeal = async (mealType: string, recipeId: string) => {
-    await fetch("/api/meal-plan", {
+    const res = await fetch("/api/meal-plan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -102,7 +214,14 @@ export function KitchenModule() {
         recipeId,
       }),
     });
-    setShowMealPicker(null);
+    if (res.ok) {
+      setShowMealPicker(null);
+      load();
+    }
+  };
+
+  const handleRemoveMeal = async (mealPlanId: string) => {
+    await fetch(`/api/meal-plan?id=${mealPlanId}`, { method: "DELETE" });
     load();
   };
 
@@ -130,8 +249,103 @@ export function KitchenModule() {
     load();
   };
 
-  const getMealForType = (mealType: string) =>
-    mealPlan.find((m) => m.mealType === mealType);
+  const getMealsForType = (mealType: string) =>
+    mealPlan.filter((m) => m.mealType === mealType);
+
+  const isRecipeInMeal = (mealType: string, recipeId: string) =>
+    mealPlan.some((m) => m.mealType === mealType && m.recipeId === recipeId);
+
+  const pickerRecipes = useMemo(() => {
+    const mealType = showMealPicker;
+    const countForMeal = (recipe: Recipe) =>
+      mealType ? (recipe.selectionCountByMealType?.[mealType] ?? 0) : 0;
+
+    return [...recipes].sort((a, b) => {
+      const countDiff = countForMeal(b) - countForMeal(a);
+      if (countDiff !== 0) return countDiff;
+      const favDiff = (b.favorite ?? 3) - (a.favorite ?? 3);
+      if (favDiff !== 0) return favDiff;
+      return a.name.localeCompare(b.name, "zh-CN");
+    });
+  }, [recipes, showMealPicker]);
+
+  const showPickerTop3 = pickerRecipes.length > 3;
+
+  const topPickerRecipes = useMemo(
+    () => (showPickerTop3 ? pickerRecipes.slice(0, 3) : []),
+    [pickerRecipes, showPickerTop3]
+  );
+
+  const allPickerRecipes = useMemo(
+    () => (showPickerTop3 ? pickerRecipes.slice(3) : pickerRecipes),
+    [pickerRecipes, showPickerTop3]
+  );
+
+  const searchedPickerRecipes = useMemo(() => {
+    const query = mealPickerSearch.trim().toLowerCase();
+    if (!query) return [];
+    return pickerRecipes.filter(
+      (recipe) =>
+        recipe.name.toLowerCase().includes(query) ||
+        normalizeRecipeCategory(recipe.category).toLowerCase().includes(query)
+    );
+  }, [pickerRecipes, mealPickerSearch]);
+
+  const renderPickerRecipe = (recipe: Recipe, rank?: number) => {
+    if (!showMealPicker) return null;
+
+    const alreadyAdded = isRecipeInMeal(showMealPicker, recipe.id);
+    const mealTypeCount = recipe.selectionCountByMealType?.[showMealPicker] ?? 0;
+
+    return (
+      <button
+        key={recipe.id}
+        disabled={alreadyAdded}
+        onClick={() => handleSetMeal(showMealPicker, recipe.id)}
+        className={`w-full text-left p-3 rounded-2xl border-2 transition-colors ${
+          alreadyAdded
+            ? "border-[#E8DFD4] bg-[#E8DFD4]/30 text-[#4A3E3D]/40 cursor-not-allowed"
+            : rank
+              ? "border-[#F7D070]/70 bg-[#F7D070]/10 hover:border-[#F7D070]"
+              : "border-[#E8DFD4] hover:border-[#F7D070]"
+        }`}
+      >
+        <div className="flex items-start gap-2">
+          {rank !== undefined && (
+            <span
+              className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                rank === 1
+                  ? "bg-[#F7D070] text-[#4A3E3D]"
+                  : rank === 2
+                    ? "bg-[#E8DFD4] text-[#4A3E3D]"
+                    : "bg-[#F5EDE3] text-[#4A3E3D]/70"
+              }`}
+            >
+              {rank}
+            </span>
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium truncate">{recipe.name}</span>
+              {alreadyAdded ? (
+                <span className="text-xs text-[#4A3E3D]/40 shrink-0">已添加</span>
+              ) : mealTypeCount > 0 ? (
+                <span className="text-xs text-[#4A3E3D]/40 shrink-0">
+                  已选 {mealTypeCount} 次
+                </span>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+              <span className="text-xs px-2 py-0.5 rounded-full bg-[#F7D070]/30 text-[#4A3E3D]">
+                {normalizeRecipeCategory(recipe.category)}
+              </span>
+              <FavoriteHearts value={recipe.favorite ?? 3} size="sm" />
+            </div>
+          </div>
+        </div>
+      </button>
+    );
+  };
 
   const difficultyColor = (d: string) => {
     switch (d) {
@@ -144,6 +358,54 @@ export function KitchenModule() {
       default:
         return "bg-[#E8DFD4]";
     }
+  };
+
+  const groupedRecipes = RECIPE_CATEGORIES.map((category) => ({
+    category,
+    items: recipes
+      .filter((recipe) => normalizeRecipeCategory(recipe.category) === category)
+      .sort((a, b) => (b.favorite ?? 3) - (a.favorite ?? 3)),
+  }));
+
+  const openRecipeForm = (category?: RecipeCategory) => {
+    setEditingRecipeId(null);
+    setRecipeForm({
+      ...EMPTY_RECIPE_FORM,
+      category: category ?? "家常菜",
+    });
+    setShowRecipeForm(true);
+  };
+
+  const openEditRecipe = (recipe: Recipe) => {
+    setEditingRecipeId(recipe.id);
+    setRecipeForm({
+      name: recipe.name,
+      category: normalizeRecipeCategory(recipe.category),
+      difficulty: recipe.difficulty,
+      duration: String(recipe.duration),
+      favorite: recipe.favorite ?? 3,
+      steps: recipe.steps,
+      ingredients:
+        recipe.ingredients.length > 0
+          ? recipe.ingredients.map((ing) => ({
+              name: ing.name,
+              amount: String(ing.amount),
+              unit: ing.unit,
+              ingredientId: ing.ingredientId || "",
+            }))
+          : [{ name: "", amount: "1", unit: "个", ingredientId: "" }],
+    });
+    setShowRecipeForm(true);
+  };
+
+  const closeRecipeForm = () => {
+    setShowRecipeForm(false);
+    setEditingRecipeId(null);
+    setRecipeForm(EMPTY_RECIPE_FORM);
+  };
+
+  const toggleRecipeCategory = (category: RecipeCategory) => {
+    setExpandedRecipeCategory((prev) => (prev === category ? null : category));
   };
 
   return (
@@ -159,43 +421,64 @@ export function KitchenModule() {
         </div>
         <div className="space-y-2">
           {MEAL_TYPES.map((mealType) => {
-            const meal = getMealForType(mealType);
+            const meals = getMealsForType(mealType);
             return (
               <Card key={mealType}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-sm font-medium text-[#4A3E3D]/60">
-                      {mealType}
-                    </span>
-                    {meal ? (
-                      <p className="font-medium mt-0.5">{meal.recipe.name}</p>
-                    ) : (
-                      <p className="text-sm text-[#4A3E3D]/40 mt-0.5">还没安排～</p>
-                    )}
-                  </div>
-                  <div className="flex gap-1">
-                    {meal && !meal.completed && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleCompleteMeal(meal.id)}
-                      >
-                        <Check size={14} className="mr-1" /> 确认开饭
-                      </Button>
-                    )}
-                    {meal?.completed && (
-                      <span className="text-sm text-[#F7D070] font-medium px-2 py-1 bg-[#F7D070]/20 rounded-xl">
-                        ✓ 已完成
-                      </span>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setShowMealPicker(mealType)}
-                    >
-                      {meal ? "换" : "选"}
-                    </Button>
-                  </div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium text-[#4A3E3D]/60">
+                    {mealType}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => openMealPicker(mealType)}
+                  >
+                    <Plus size={14} className="mr-0.5" /> 添加
+                  </Button>
                 </div>
+                {meals.length === 0 ? (
+                  <p className="text-sm text-[#4A3E3D]/40">还没安排～</p>
+                ) : (
+                  <div className="space-y-2">
+                    {meals.map((meal) => (
+                      <div
+                        key={meal.id}
+                        className="flex items-center justify-between gap-2"
+                      >
+                        <p
+                          className={`font-medium flex-1 min-w-0 truncate ${
+                            meal.completed ? "text-[#4A3E3D]/50 line-through" : ""
+                          }`}
+                        >
+                          {meal.recipe.name}
+                        </p>
+                        <div className="flex gap-1 shrink-0">
+                          {!meal.completed && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleCompleteMeal(meal.id)}
+                            >
+                              <Check size={14} className="mr-1" /> 开饭
+                            </Button>
+                          )}
+                          {meal.completed && (
+                            <span className="text-sm text-[#F7D070] font-medium px-2 py-1 bg-[#F7D070]/20 rounded-xl">
+                              ✓ 已完成
+                            </span>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRemoveMeal(meal.id)}
+                            aria-label="移除菜品"
+                          >
+                            <Trash2 size={14} />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </Card>
             );
           })}
@@ -205,43 +488,128 @@ export function KitchenModule() {
       <div>
         <div className="flex items-center justify-between mb-2">
           <h2 className="font-semibold flex items-center gap-1.5">
-            <BookOpen size={18} /> 菜谱库
+            <BookOpen size={18} /> 精选菜品
           </h2>
-          <Button size="sm" onClick={() => setShowRecipeForm(true)}>
+          <Button
+            size="sm"
+            onClick={() => openRecipeForm(expandedRecipeCategory ?? undefined)}
+          >
             <Plus size={14} className="mr-1" /> 新建
           </Button>
         </div>
-        {recipes.length === 0 ? (
-          <Card className="text-center py-6 text-[#4A3E3D]/50">
-            <p>还没有菜谱</p>
-            <p className="text-sm mt-1">创建第一个拿手菜吧</p>
-          </Card>
-        ) : (
-          <div className="grid gap-2">
-            {recipes.map((recipe) => (
-              <Card
-                key={recipe.id}
-                onClick={() => setShowRecipeDetail(recipe)}
-                className="cursor-pointer"
+
+        <div className="grid grid-cols-2 gap-3">
+          {groupedRecipes.map(({ category, items }) => {
+            const meta = RECIPE_CATEGORY_META[category];
+            const Icon = meta.icon;
+            const isExpanded = expandedRecipeCategory === category;
+
+            return (
+              <button
+                key={category}
+                type="button"
+                onClick={() => toggleRecipeCategory(category)}
+                className={`text-left rounded-2xl border-2 p-4 transition-all ${
+                  isExpanded
+                    ? "border-[#F7D070] bg-[#F7D070]/15 shadow-sm"
+                    : "border-[#E8DFD4] bg-white hover:border-[#F7D070]/60"
+                }`}
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{recipe.name}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded-full ${difficultyColor(recipe.difficulty)}`}
-                      >
-                        {recipe.difficulty}
-                      </span>
-                      <span className="text-xs text-[#4A3E3D]/50 flex items-center gap-0.5">
-                        <Clock size={12} /> {recipe.duration}分钟
-                      </span>
+                <div className="flex items-start justify-between">
+                  <div
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center ${meta.bg}`}
+                  >
+                    <Icon size={24} className={meta.iconColor} />
+                  </div>
+                  <ChevronDown
+                    size={18}
+                    className={`text-[#4A3E3D]/40 transition-transform ${
+                      isExpanded ? "rotate-180" : ""
+                    }`}
+                  />
+                </div>
+                <p className="font-semibold mt-3 text-[#4A3E3D]">{category}</p>
+                <p className="text-sm text-[#4A3E3D]/60 mt-0.5">
+                  {items.length > 0 ? `${items.length} 道菜` : "暂无菜品"}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+
+        {expandedRecipeCategory && (
+          <div className="space-y-2 mt-3">
+            {(() => {
+              const group = groupedRecipes.find(
+                (g) => g.category === expandedRecipeCategory
+              );
+              if (!group || group.items.length === 0) {
+                return (
+                  <Card className="text-center py-6 text-[#4A3E3D]/50">
+                    <p>{expandedRecipeCategory}还没有菜品</p>
+                    <Button
+                      size="sm"
+                      className="mt-3"
+                      onClick={() => openRecipeForm(expandedRecipeCategory)}
+                    >
+                      <Plus size={14} className="mr-1" />
+                      添加{expandedRecipeCategory}
+                    </Button>
+                  </Card>
+                );
+              }
+
+              return group.items.map((recipe) => (
+                <Card key={recipe.id} className="flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => setShowRecipeDetail(recipe)}
+                      className="text-left w-full"
+                    >
+                      <p className="font-medium">{recipe.name}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full ${difficultyColor(recipe.difficulty)}`}
+                        >
+                          {recipe.difficulty}
+                        </span>
+                        <span className="text-xs text-[#4A3E3D]/50 flex items-center gap-0.5">
+                          <Clock size={12} /> {recipe.duration}分钟
+                        </span>
+                      </div>
+                    </button>
+                    <div className="mt-1.5">
+                      <FavoriteHearts
+                        value={recipe.favorite ?? 3}
+                        onChange={(favorite) =>
+                          handleUpdateFavorite(recipe, favorite)
+                        }
+                        size="sm"
+                      />
                     </div>
                   </div>
-                  <span className="text-[#4A3E3D]/30">›</span>
-                </div>
-              </Card>
-            ))}
+                  <div className="flex gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => openEditRecipe(recipe)}
+                      className="p-2 rounded-xl hover:bg-[#F7D070]/20 transition-colors"
+                      title="编辑"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteRecipe(recipe)}
+                      className="p-2 rounded-xl hover:bg-[#E98B75]/20 text-[#E98B75] transition-colors"
+                      title="删除"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </Card>
+              ));
+            })()}
           </div>
         )}
       </div>
@@ -249,22 +617,69 @@ export function KitchenModule() {
       <Modal
         open={showMealPicker !== null}
         onClose={() => setShowMealPicker(null)}
-        title={`选择${showMealPicker}`}
+        title={`添加${showMealPicker}`}
       >
-        <div className="space-y-2 max-h-60 overflow-y-auto">
-          {recipes.map((recipe) => (
-            <button
-              key={recipe.id}
-              onClick={() =>
-                showMealPicker && handleSetMeal(showMealPicker, recipe.id)
-              }
-              className="w-full text-left p-3 rounded-2xl border-2 border-[#E8DFD4] hover:border-[#F7D070] transition-colors"
-            >
-              {recipe.name}
-            </button>
-          ))}
-          {recipes.length === 0 && (
+        <div className="space-y-3">
+          <div className="relative">
+            <Search
+              size={16}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#4A3E3D]/40"
+            />
+            <input
+              className="w-full pl-10 pr-4 py-2.5 rounded-2xl border-2 border-[#E8DFD4] bg-white focus:border-[#F7D070] outline-none"
+              placeholder="搜索菜品名称或类型"
+              value={mealPickerSearch}
+              onChange={(e) => setMealPickerSearch(e.target.value)}
+            />
+          </div>
+
+          {pickerRecipes.length === 0 ? (
             <p className="text-center text-[#4A3E3D]/50 py-4">请先创建菜谱</p>
+          ) : mealPickerSearch.trim() ? (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-[#4A3E3D]/50 px-1">
+                搜索结果（{searchedPickerRecipes.length}）
+              </p>
+              {searchedPickerRecipes.length > 0 ? (
+                searchedPickerRecipes.map((recipe) => renderPickerRecipe(recipe))
+              ) : (
+                <p className="text-center text-[#4A3E3D]/50 py-4">
+                  未找到匹配的菜品
+                </p>
+              )}
+            </div>
+          ) : (
+            <>
+              {showPickerTop3 && topPickerRecipes.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-[#4A3E3D]/50 px-1">
+                    {showMealPicker}常选 TOP3
+                  </p>
+                  {topPickerRecipes.map((recipe, index) =>
+                    renderPickerRecipe(recipe, index + 1)
+                  )}
+                </div>
+              )}
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setMealPickerAllExpanded((prev) => !prev)}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-2xl border-2 border-[#E8DFD4] bg-white hover:border-[#F7D070]/60 transition-colors"
+                >
+                  <span className="text-xs font-medium text-[#4A3E3D]/60">
+                    全部菜品（{allPickerRecipes.length}）
+                  </span>
+                  <ChevronDown
+                    size={16}
+                    className={`text-[#4A3E3D]/50 transition-transform ${
+                      mealPickerAllExpanded ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+                {mealPickerAllExpanded &&
+                  allPickerRecipes.map((recipe) => renderPickerRecipe(recipe))}
+              </div>
+            </>
           )}
         </div>
       </Modal>
@@ -315,7 +730,10 @@ export function KitchenModule() {
       >
         {showRecipeDetail && (
           <div className="space-y-3">
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <span className="text-xs px-2 py-0.5 rounded-full bg-[#F7D070]/30 text-[#4A3E3D]">
+                {normalizeRecipeCategory(showRecipeDetail.category)}
+              </span>
               <span
                 className={`text-xs px-2 py-0.5 rounded-full ${difficultyColor(showRecipeDetail.difficulty)}`}
               >
@@ -324,6 +742,15 @@ export function KitchenModule() {
               <span className="text-xs text-[#4A3E3D]/50">
                 {showRecipeDetail.duration}分钟
               </span>
+            </div>
+            <div>
+              <p className="text-sm font-medium mb-1">喜爱度</p>
+              <FavoriteHearts
+                value={showRecipeDetail.favorite ?? 3}
+                onChange={(favorite) =>
+                  handleUpdateFavorite(showRecipeDetail, favorite)
+                }
+              />
             </div>
             <div>
               <p className="text-sm font-medium mb-1">所需食材</p>
@@ -336,11 +763,34 @@ export function KitchenModule() {
                 ))}
               </ul>
             </div>
-            <div>
-              <p className="text-sm font-medium mb-1">步骤</p>
-              <p className="text-sm text-[#4A3E3D]/80 whitespace-pre-wrap">
-                {showRecipeDetail.steps}
-              </p>
+            {showRecipeDetail.steps.trim() && (
+              <div>
+                <p className="text-sm font-medium mb-1">备注</p>
+                <p className="text-sm text-[#4A3E3D]/80 whitespace-pre-wrap">
+                  {showRecipeDetail.steps}
+                </p>
+              </div>
+            )}
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="secondary"
+                className="flex-1"
+                onClick={() => {
+                  openEditRecipe(showRecipeDetail);
+                  setShowRecipeDetail(null);
+                }}
+              >
+                <Pencil size={14} className="mr-1" />
+                编辑
+              </Button>
+              <Button
+                variant="secondary"
+                className="flex-1 text-[#E98B75] border-[#E98B75]/30 hover:border-[#E98B75]"
+                onClick={() => handleDeleteRecipe(showRecipeDetail)}
+              >
+                <Trash2 size={14} className="mr-1" />
+                删除
+              </Button>
             </div>
           </div>
         )}
@@ -348,8 +798,8 @@ export function KitchenModule() {
 
       <Modal
         open={showRecipeForm}
-        onClose={() => setShowRecipeForm(false)}
-        title="创建菜谱"
+        onClose={closeRecipeForm}
+        title={editingRecipeId ? "编辑菜品" : "菜品介绍"}
       >
         <div className="space-y-3 max-h-[70vh] overflow-y-auto">
           <input
@@ -360,38 +810,65 @@ export function KitchenModule() {
               setRecipeForm({ ...recipeForm, name: e.target.value })
             }
           />
-          <div className="flex gap-2">
-            <select
-              className="flex-1 px-4 py-2.5 rounded-2xl border-2 border-[#E8DFD4] bg-white outline-none"
-              value={recipeForm.difficulty}
-              onChange={(e) =>
-                setRecipeForm({ ...recipeForm, difficulty: e.target.value })
-              }
-            >
-              {DIFFICULTIES.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              className="w-24 px-4 py-2.5 rounded-2xl border-2 border-[#E8DFD4] bg-white outline-none"
-              placeholder="分钟"
-              value={recipeForm.duration}
-              onChange={(e) =>
-                setRecipeForm({ ...recipeForm, duration: e.target.value })
+          <select
+            className="w-full px-4 py-2.5 rounded-2xl border-2 border-[#E8DFD4] bg-white focus:border-[#F7D070] outline-none"
+            value={recipeForm.category}
+            onChange={(e) =>
+              setRecipeForm({
+                ...recipeForm,
+                category: e.target.value as RecipeCategory,
+              })
+            }
+          >
+            {RECIPE_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              <p className="text-sm text-[#4A3E3D]/60 mb-1">难度</p>
+              <select
+                className="w-full px-4 py-2.5 rounded-2xl border-2 border-[#E8DFD4] bg-white outline-none"
+                value={recipeForm.difficulty}
+                onChange={(e) =>
+                  setRecipeForm({ ...recipeForm, difficulty: e.target.value })
+                }
+              >
+                {DIFFICULTIES.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <p className="text-sm text-[#4A3E3D]/60 mb-1">预计时间</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="1"
+                  className="w-20 px-4 py-2.5 rounded-2xl border-2 border-[#E8DFD4] bg-white outline-none"
+                  placeholder="30"
+                  value={recipeForm.duration}
+                  onChange={(e) =>
+                    setRecipeForm({ ...recipeForm, duration: e.target.value })
+                  }
+                />
+                <span className="text-sm text-[#4A3E3D]/60 shrink-0">分钟</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-medium mb-1">喜爱度</p>
+            <FavoriteHearts
+              value={recipeForm.favorite}
+              onChange={(favorite) =>
+                setRecipeForm({ ...recipeForm, favorite })
               }
             />
           </div>
-          <textarea
-            className="w-full px-4 py-2.5 rounded-2xl border-2 border-[#E8DFD4] bg-white focus:border-[#F7D070] outline-none min-h-24"
-            placeholder="步骤（支持换行）"
-            value={recipeForm.steps}
-            onChange={(e) =>
-              setRecipeForm({ ...recipeForm, steps: e.target.value })
-            }
-          />
           <div>
             <p className="text-sm font-medium mb-2">关联食材</p>
             {recipeForm.ingredients.map((ing, idx) => (
@@ -457,8 +934,19 @@ export function KitchenModule() {
               + 添加食材
             </Button>
           </div>
-          <Button onClick={handleCreateRecipe} className="w-full">
-            保存菜谱
+          <div>
+            <p className="text-sm font-medium mb-1">备注</p>
+            <textarea
+              className="w-full px-4 py-2.5 rounded-2xl border-2 border-[#E8DFD4] bg-white focus:border-[#F7D070] outline-none min-h-20"
+              placeholder="选填，可写做法、口味或小提示"
+              value={recipeForm.steps}
+              onChange={(e) =>
+                setRecipeForm({ ...recipeForm, steps: e.target.value })
+              }
+            />
+          </div>
+          <Button onClick={handleSaveRecipe} className="w-full">
+            {editingRecipeId ? "保存修改" : "保存菜品"}
           </Button>
         </div>
       </Modal>

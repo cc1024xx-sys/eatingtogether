@@ -70,7 +70,9 @@ async function main() {
   const recipe1 = await prisma.recipe.create({
     data: {
       name: "番茄炒蛋",
+      category: "快手菜",
       difficulty: "新手",
+      favorite: 5,
       duration: 15,
       steps:
         "1. 番茄切块，鸡蛋打散\n2. 热油炒鸡蛋至金黄盛出\n3. 炒番茄至软烂\n4. 倒入鸡蛋翻炒均匀，加盐调味",
@@ -86,7 +88,9 @@ async function main() {
   const recipe2 = await prisma.recipe.create({
     data: {
       name: "可乐鸡翅",
+      category: "招牌菜",
       difficulty: "进阶",
+      favorite: 4,
       duration: 40,
       steps:
         "1. 鸡翅洗净划刀\n2. 焯水去血沫\n3. 煎至两面金黄\n4. 加可乐、酱油焖煮20分钟\n5. 大火收汁",

@@ -2,6 +2,13 @@ export type IngredientCategory = "生鲜" | "冷冻" | "调料" | "零食饮料"
 
 export type Difficulty = "新手" | "进阶" | "大厨";
 
+export type RecipeCategory =
+  | "快手菜"
+  | "家常菜"
+  | "招牌菜"
+  | "甜品"
+  | "酒水饮料";
+
 export type MealType = "早餐" | "午餐" | "晚餐" | "夜宵";
 
 export type ExpiryStatus = "fresh" | "warning" | "urgent" | "expired";
@@ -36,12 +43,18 @@ export interface RecipeIngredient {
 export interface Recipe {
   id: string;
   name: string;
+  category: string;
   difficulty: string;
   duration: number;
+  favorite: number;
   steps: string;
   imageUrl: string | null;
   ingredients: RecipeIngredient[];
   createdAt: string;
+  /** 历史被选入今日食谱的总次数 */
+  selectionCount?: number;
+  /** 各餐次历史被选次数 */
+  selectionCountByMealType?: Record<string, number>;
 }
 
 export interface MealPlanItem {
@@ -81,15 +94,33 @@ export function getDefaultUnit(category: IngredientCategory): string {
 
 export const DIFFICULTIES: Difficulty[] = ["新手", "进阶", "大厨"];
 
+export const RECIPE_CATEGORIES: RecipeCategory[] = [
+  "快手菜",
+  "家常菜",
+  "招牌菜",
+  "甜品",
+  "酒水饮料",
+];
+
 export const MEAL_TYPES: MealType[] = ["早餐", "午餐", "晚餐", "夜宵"];
 
-export const QUICK_INGREDIENTS = [
-  { name: "鸡蛋", category: "生鲜" as const, unit: "个", addAmount: 6 },
-  { name: "牛奶", category: "零食饮料" as const, unit: "毫升", addAmount: 1000 },
-  { name: "土豆", category: "生鲜" as const, unit: "克", addAmount: 500 },
-  { name: "番茄", category: "生鲜" as const, unit: "克", addAmount: 500 },
-  { name: "青椒", category: "生鲜" as const, unit: "克", addAmount: 300 },
-  { name: "大蒜", category: "生鲜" as const, unit: "克", addAmount: 100 },
+export interface QuickIngredient {
+  name: string;
+  category: IngredientCategory;
+  unit: string;
+  addAmount: number;
+}
+
+export const DEFAULT_QUICK_INGREDIENTS: QuickIngredient[] = [
+  { name: "鸡蛋", category: "生鲜", unit: "个", addAmount: 6 },
+  { name: "牛奶", category: "零食饮料", unit: "毫升", addAmount: 1000 },
+  { name: "土豆", category: "生鲜", unit: "克", addAmount: 500 },
+  { name: "番茄", category: "生鲜", unit: "克", addAmount: 500 },
+  { name: "青椒", category: "生鲜", unit: "克", addAmount: 300 },
+  { name: "大蒜", category: "生鲜", unit: "克", addAmount: 100 },
 ];
+
+/** @deprecated use DEFAULT_QUICK_INGREDIENTS */
+export const QUICK_INGREDIENTS = DEFAULT_QUICK_INGREDIENTS;
 
 export const CUTE_EMOJIS = ["💕", "🥰", "😋", "🍳", "🥘", "❤️", "🌸", "✨", "🫶", "😊"];

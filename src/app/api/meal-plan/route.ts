@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     include: {
       recipe: { include: { ingredients: true } },
     },
-    orderBy: { mealType: "asc" },
+    orderBy: [{ mealType: "asc" }, { createdAt: "asc" }],
   });
 
   return NextResponse.json(items);
@@ -22,19 +22,22 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const { date, mealType, recipeId } = body;
 
-  const item = await prisma.mealPlanItem.upsert({
-    where: {
-      date_mealType: { date, mealType },
-    },
-    create: { date, mealType, recipeId },
-    update: { recipeId, completed: false },
+  const existing = await prisma.mealPlanItem.findFirst({
+    where: { date, mealType, recipeId },
+  });
+  if (existing) {
+    return NextResponse.json({ error: "该菜品已在餐单中" }, { status: 409 });
+  }
+
+  const item = await prisma.mealPlanItem.create({
+    data: { date, mealType, recipeId },
     include: {
       recipe: { include: { ingredients: true } },
     },
   });
 
   await bumpSyncVersion();
-  return NextResponse.json(item);
+  return NextResponse.json(item, { status: 201 });
 }
 
 export async function DELETE(request: NextRequest) {
