@@ -10,6 +10,8 @@ const geistSans = Geist({
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://eatingtogether.vercel.app";
 
+const appleTouchIcon = `${siteUrl}/apple-touch-icon.png`;
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: "小食光 FlavorTogether",
@@ -23,7 +25,12 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [{ url: "/favicon.png", sizes: "32x32", type: "image/png" }],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
+  other: {
+    "apple-mobile-web-app-capable": "yes",
   },
 };
 
@@ -38,6 +45,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" className={`${geistSans.variable} h-full antialiased`}>
+      <head>
+        {/* Absolute URL — Safari Web Clip is most reliable with a full HTTPS href */}
+        <link rel="apple-touch-icon" href={appleTouchIcon} />
+        <link
+          rel="apple-touch-icon"
+          sizes="180x180"
+          href={appleTouchIcon}
+        />
+        <link rel="apple-touch-icon-precomposed" href={appleTouchIcon} />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
