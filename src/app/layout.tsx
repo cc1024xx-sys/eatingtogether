@@ -8,8 +8,9 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "小食光 FlavorTogether",
+  title: "小食光",
   description: "面向情侣的治愈系双人食材管理与协同做饭软件",
+  metadataBase: new URL("https://eatingtogether.vercel.app"),
   manifest: "/manifest.webmanifest",
   applicationName: "小食光",
   appleWebApp: {
@@ -20,13 +21,11 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.png", sizes: "32x32", type: "image/png" },
+      { url: "/apple-touch-icon-v3.png", sizes: "180x180", type: "image/png" },
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: [
-      { url: "/icons/apple-touch-icon.png", sizes: "180x180" },
-      { url: "/apple-touch-icon.png", sizes: "180x180" },
-    ],
+    apple: [{ url: "/apple-touch-icon-v3.png", sizes: "180x180" }],
   },
   other: {
     "apple-mobile-web-app-capable": "yes",
@@ -45,18 +44,11 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" className={`${geistSans.variable} h-full antialiased`}>
       <head>
-        {/* Explicit links without query/type — iOS Safari home-screen compatibility */}
-        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+        {/* Absolute HTTPS URL — most reliable for Safari Web Clip preview */}
         <link
           rel="apple-touch-icon"
-          sizes="180x180"
-          href="/icons/apple-touch-icon.png"
+          href="https://eatingtogether.vercel.app/apple-touch-icon-v3.png"
         />
-        <link
-          rel="apple-touch-icon-precomposed"
-          href="/icons/apple-touch-icon.png"
-        />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

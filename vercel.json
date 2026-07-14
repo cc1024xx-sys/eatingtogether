@@ -2,5 +2,26 @@
   "buildCommand": "npm run vercel-build",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "regions": ["hkg1"]
+  "regions": ["hkg1"],
+  "headers": [
+    {
+      "source": "/apple-touch-icon(.*).png",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        },
+        { "key": "Content-Type", "value": "image/png" }
+      ]
+    },
+    {
+      "source": "/icons/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    }
+  ]
 }
