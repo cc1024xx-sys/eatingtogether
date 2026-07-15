@@ -82,7 +82,7 @@ export const INGREDIENT_CATEGORIES: IngredientCategory[] = [
 ];
 
 export const CATEGORY_UNIT_OPTIONS: Record<IngredientCategory, string[]> = {
-  生鲜: ["克", "个", "把", "块", "毫升"],
+  生鲜: ["个", "克", "把", "块", "毫升"],
   冷冻: ["克", "个", "袋", "包"],
   调料: ["毫升", "克", "勺", "袋"],
   零食饮料: ["个", "毫升", "克", "包", "罐"],

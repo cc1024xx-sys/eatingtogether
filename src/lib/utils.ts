@@ -1,4 +1,4 @@
-import { differenceInDays, format, parseISO } from "date-fns";
+import { addDays, differenceInDays, format, parseISO } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import type { ExpiryStatus } from "./types";
 
@@ -50,6 +50,29 @@ export function formatDateTime(date: string | Date): string {
 
 export function todayString(): string {
   return format(new Date(), "yyyy-MM-dd");
+}
+
+export function offsetDateString(days: number): string {
+  return format(addDays(new Date(), days), "yyyy-MM-dd");
+}
+
+export function getMealPlanDayLabel(dateStr: string): string {
+  if (dateStr === todayString()) return "今天";
+  if (dateStr === offsetDateString(1)) return "明天";
+  return formatDate(dateStr);
+}
+
+export function formatDateInput(date: string | Date): string {
+  const d = typeof date === "string" ? parseISO(date) : date;
+  return format(d, "yyyy-MM-dd");
+}
+
+export function defaultExpiryDateInput(days = 7): string {
+  return format(addDays(new Date(), days), "yyyy-MM-dd");
+}
+
+export function parseDateInput(value: string): Date {
+  return parseISO(value);
 }
 
 export async function bumpSyncVersion() {

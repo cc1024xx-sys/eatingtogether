@@ -14,14 +14,14 @@ const appleTouchIcon = `${siteUrl}/apple-touch-icon.png`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "小食光 FlavorTogether",
+  title: "BC厨房",
   description: "面向情侣的治愈系双人食材管理与协同做饭软件",
   manifest: "/manifest.webmanifest",
-  applicationName: "小食光",
+  applicationName: "BC厨房",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "小食光",
+    title: "BC厨房",
   },
   icons: {
     icon: [{ url: "/favicon.png", sizes: "32x32", type: "image/png" }],
@@ -35,6 +35,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
   themeColor: "#F7D070",
 };
 

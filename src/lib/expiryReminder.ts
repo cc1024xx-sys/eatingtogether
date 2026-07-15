@@ -47,7 +47,7 @@ export async function sendExpiryPushNotification(items: ExpiryAlertItem[]) {
   if (Notification.permission !== "granted" || items.length === 0) return;
 
   const body = buildExpiryAlertMessage(items);
-  new Notification("小食光 · 今日临期提醒", {
+  new Notification("BC厨房 · 今日临期提醒", {
     body,
     icon: "/icons/icon-192.png",
     tag: `expiry-${getTodayKey()}`,

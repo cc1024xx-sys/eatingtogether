@@ -25,7 +25,7 @@ export function Navigation({ active, onChange, unreadMessages = 0 }: NavigationP
             <Sparkles size={22} className="text-[#4A3E3D]" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-[#4A3E3D]">小食光</h1>
+            <h1 className="text-xl font-bold text-[#4A3E3D]">BC厨房</h1>
             <p className="text-xs text-[#4A3E3D]/60">Love is the secret ingredient.</p>
           </div>
         </div>

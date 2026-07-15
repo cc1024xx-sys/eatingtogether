@@ -30,10 +30,12 @@ import {
   type RestockItem,
 } from "@/lib/types";
 import {
-  formatDate,
+  defaultExpiryDateInput,
+  formatDateInput,
   getExpiryColor,
   getExpiryLabel,
   getExpiryStatus,
+  parseDateInput,
 } from "@/lib/utils";
 import { addDays } from "date-fns";
 import {
@@ -82,14 +84,17 @@ export function FridgeModule() {
   const [updatingQuantityId, setUpdatingQuantityId] = useState<string | null>(
     null
   );
+  const [updatingExpiryId, setUpdatingExpiryId] = useState<string | null>(
+    null
+  );
   const [restockInput, setRestockInput] = useState("");
 
   const [form, setForm] = useState({
     name: "",
     category: "生鲜" as IngredientCategory,
     quantity: "1",
-    unit: "克",
-    expiryDays: "7",
+    unit: getDefaultUnit("生鲜"),
+    expiryDate: defaultExpiryDateInput(),
   });
 
   const handleCategoryChange = (category: IngredientCategory) => {
@@ -146,8 +151,8 @@ export function FridgeModule() {
   };
 
   const handleAdd = async () => {
-    if (!form.name.trim()) return;
-    const expiryDate = addDays(new Date(), Number(form.expiryDays));
+    if (!form.name.trim() || !form.expiryDate) return;
+    const expiryDate = parseDateInput(form.expiryDate);
     const res = await fetch("/api/ingredients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -174,8 +179,8 @@ export function FridgeModule() {
       name: "",
       category: "生鲜",
       quantity: "1",
-      unit: "克",
-      expiryDays: "7",
+      unit: getDefaultUnit("生鲜"),
+      expiryDate: defaultExpiryDateInput(),
     });
     setShowAdd(false);
     load();
@@ -324,6 +329,33 @@ export function FridgeModule() {
     }
   };
 
+  const handleUpdateExpiry = async (ing: Ingredient, dateValue: string) => {
+    if (!dateValue) return;
+    if (dateValue === formatDateInput(ing.expiryDate)) return;
+
+    setUpdatingExpiryId(ing.id);
+    try {
+      const res = await fetch("/api/ingredients", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: ing.id,
+          expiryDate: parseDateInput(dateValue).toISOString(),
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("更新失败");
+      }
+
+      await load();
+    } catch {
+      alert(`更新「${ing.name}」到期时间失败，请稍后重试`);
+    } finally {
+      setUpdatingExpiryId(null);
+    }
+  };
+
   const handleToggleRestock = async (item: RestockItem) => {
     const willCheck = !item.checked;
     setCheckAnim(item.id);
@@ -417,7 +449,7 @@ export function FridgeModule() {
       category,
       quantity: "1",
       unit,
-      expiryDays: "7",
+      expiryDate: defaultExpiryDateInput(),
     });
     setShowRestock(false);
     setShowAdd(true);
@@ -690,9 +722,22 @@ export function FridgeModule() {
                               {ing.unit}
                             </span>
                           </div>
-                          <span className="text-sm text-[#4A3E3D]/40">
-                            · 到期 {formatDate(ing.expiryDate)}
-                          </span>
+                          <label className="flex items-center gap-1 text-sm text-[#4A3E3D]/60 shrink-0">
+                            <span className="text-[#4A3E3D]/40">· 到期</span>
+                            <input
+                              type="date"
+                              key={`${ing.id}-${ing.expiryDate}`}
+                              defaultValue={formatDateInput(ing.expiryDate)}
+                              disabled={
+                                updatingExpiryId === ing.id ||
+                                updatingQuantityId === ing.id
+                              }
+                              onChange={(e) =>
+                                handleUpdateExpiry(ing, e.target.value)
+                              }
+                              className="px-2 py-0.5 text-sm rounded-lg border border-[#E8DFD4] bg-white focus:border-[#F7D070] outline-none disabled:opacity-50"
+                            />
+                          </label>
                         </div>
                       </div>
                       <div className="flex gap-1 shrink-0">
@@ -762,13 +807,27 @@ export function FridgeModule() {
             </select>
           </div>
           <div>
-            <label className="text-sm text-[#4A3E3D]/60">保质期（天）</label>
+            <label className="text-sm text-[#4A3E3D]/60">保质期</label>
             <input
-              type="number"
+              type="date"
               className="w-full mt-1 px-4 py-2.5 rounded-2xl border-2 border-[#E8DFD4] bg-white focus:border-[#F7D070] outline-none"
-              value={form.expiryDays}
-              onChange={(e) => setForm({ ...form, expiryDays: e.target.value })}
+              value={form.expiryDate}
+              onChange={(e) => setForm({ ...form, expiryDate: e.target.value })}
             />
+            <div className="flex flex-wrap gap-2 mt-2">
+              {[3, 7, 14, 30].map((days) => (
+                <button
+                  key={days}
+                  type="button"
+                  onClick={() =>
+                    setForm({ ...form, expiryDate: defaultExpiryDateInput(days) })
+                  }
+                  className="px-3 py-1 rounded-xl text-xs font-medium bg-[#E8DFD4]/60 text-[#4A3E3D] hover:bg-[#F7D070]/40 transition-colors"
+                >
+                  {days} 天
+                </button>
+              ))}
+            </div>
           </div>
           <Button onClick={handleAdd} className="w-full">
             确认添加
@@ -859,7 +918,7 @@ export function FridgeModule() {
                 {
                   name: "",
                   category: "生鲜",
-                  unit: "克",
+                  unit: getDefaultUnit("生鲜"),
                   addAmount: 500,
                 },
               ])

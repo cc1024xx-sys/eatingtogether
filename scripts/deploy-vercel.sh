@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-echo "==> 小食光 Vercel 部署脚本"
+echo "==> BC厨房 Vercel 部署脚本"
 echo ""
 
 if ! command -v npx >/dev/null 2>&1; then

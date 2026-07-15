@@ -6,6 +6,8 @@ import {
   Cake,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   CupSoda,
   Home,
@@ -34,7 +36,7 @@ import {
   type Recipe,
   type RecipeCategory,
 } from "@/lib/types";
-import { todayString } from "@/lib/utils";
+import { getMealPlanDayLabel, offsetDateString } from "@/lib/utils";
 
 const RECIPE_CATEGORY_META: Record<
   RecipeCategory,
@@ -81,15 +83,18 @@ export function KitchenModule() {
   const [expandedRecipeCategory, setExpandedRecipeCategory] =
     useState<RecipeCategory | null>(null);
   const [editingRecipeId, setEditingRecipeId] = useState<string | null>(null);
+  const [planDateOffset, setPlanDateOffset] = useState(0);
+
+  const planDate = useMemo(() => offsetDateString(planDateOffset), [planDateOffset]);
+  const planDayLabel = getMealPlanDayLabel(planDate);
 
   const [recipeForm, setRecipeForm] = useState(EMPTY_RECIPE_FORM);
 
   const load = useCallback(async () => {
     try {
-      const date = todayString();
       const [recipesRes, mealRes, ingRes] = await Promise.all([
         fetch("/api/recipes"),
-        fetch(`/api/meal-plan?date=${date}`),
+        fetch(`/api/meal-plan?date=${planDate}`),
         fetch("/api/ingredients"),
       ]);
       setRecipes(await parseJsonResponse<Recipe[]>(recipesRes, []));
@@ -98,7 +103,7 @@ export function KitchenModule() {
     } catch (error) {
       console.error("加载菜单数据失败", error);
     }
-  }, []);
+  }, [planDate]);
 
   useEffect(() => {
     load();
@@ -209,7 +214,7 @@ export function KitchenModule() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        date: todayString(),
+        date: planDate,
         mealType,
         recipeId,
       }),
@@ -414,9 +419,32 @@ export function KitchenModule() {
 
       <div>
         <div className="flex items-center justify-between mb-2">
-          <h2 className="font-semibold flex items-center gap-1.5">
-            <UtensilsCrossed size={18} /> 今日食谱
-          </h2>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                disabled={planDateOffset === 0}
+                onClick={() => setPlanDateOffset((offset) => Math.max(0, offset - 1))}
+                className="p-1.5 rounded-xl text-[#4A3E3D]/60 hover:bg-[#E8DFD4]/60 hover:text-[#4A3E3D] transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                aria-label="查看今天"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <h2 className="font-semibold flex items-center gap-1.5 min-w-[5.5rem] justify-center">
+                <UtensilsCrossed size={18} />
+                {planDayLabel}
+              </h2>
+              <button
+                type="button"
+                disabled={planDateOffset === 1}
+                onClick={() => setPlanDateOffset((offset) => Math.min(1, offset + 1))}
+                className="p-1.5 rounded-xl text-[#4A3E3D]/60 hover:bg-[#E8DFD4]/60 hover:text-[#4A3E3D] transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                aria-label="查看明天"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
           <span className="text-xs text-[#4A3E3D]/50">智能扣减库存</span>
         </div>
         <div className="space-y-2">

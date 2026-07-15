@@ -17,10 +17,26 @@
   --font-sans: var(--font-geist-sans);
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
 body {
   background: var(--cream-bg);
   color: var(--coffee-text);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
+  overflow-x: clip;
+}
+
+/* iOS Safari auto-zooms focused inputs below 16px */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
 
 @keyframes fly-to-pot {
