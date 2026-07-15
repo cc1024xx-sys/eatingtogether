@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   AlertTriangle,
+  Check,
   ChevronDown,
   CupSoda,
   FlaskConical,
@@ -88,6 +89,10 @@ export function FridgeModule() {
     null
   );
   const [restockInput, setRestockInput] = useState("");
+  const [addSuccess, setAddSuccess] = useState<{
+    name: string;
+    category: IngredientCategory;
+  } | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -138,6 +143,12 @@ export function FridgeModule() {
 
   useSync(load);
 
+  useEffect(() => {
+    if (!addSuccess) return;
+    const timer = setTimeout(() => setAddSuccess(null), 2600);
+    return () => clearTimeout(timer);
+  }, [addSuccess]);
+
   const handleEnableNotify = async () => {
     const granted = await requestExpiryNotificationPermission();
     setNotifyPermission(
@@ -172,7 +183,7 @@ export function FridgeModule() {
 
     const ingredient = await parseJsonResponse<Ingredient | null>(res, null);
     if (ingredient?.id) {
-      markIngredientAsNew(ingredient);
+      showAddSuccess(ingredient);
     }
 
     setForm({
@@ -193,6 +204,12 @@ export function FridgeModule() {
     const category = normalizeCategory(ingredient.category) as IngredientCategory;
     setNewIngredientIds((prev) => new Set(prev).add(ingredient.id));
     setExpandedCategory(category);
+  };
+
+  const showAddSuccess = (ingredient: Ingredient) => {
+    markIngredientAsNew(ingredient);
+    const category = normalizeCategory(ingredient.category) as IngredientCategory;
+    setAddSuccess({ name: ingredient.name, category });
   };
 
   const clearNewBadgesForCategory = (category: IngredientCategory) => {
@@ -277,7 +294,7 @@ export function FridgeModule() {
 
       const ingredient = await parseJsonResponse<Ingredient | null>(res, null);
       if (ingredient?.id) {
-        markIngredientAsNew(ingredient);
+        showAddSuccess(ingredient);
       }
 
       await load();
@@ -486,6 +503,22 @@ export function FridgeModule() {
 
   return (
     <div className="space-y-4">
+      {addSuccess && (
+        <div className="fixed bottom-6 left-1/2 z-50 pointer-events-none animate-toast-in">
+          <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-[#4A3E3D] text-white shadow-lg border-2 border-[#F7D070]/30">
+            <span className="w-7 h-7 rounded-full bg-[#F7D070] text-[#4A3E3D] flex items-center justify-center shrink-0 animate-heart-check">
+              <Check size={16} strokeWidth={3} />
+            </span>
+            <div className="min-w-0">
+              <p className="font-medium">已加入冰箱</p>
+              <p className="text-sm text-white/80 truncate">
+                {addSuccess.name} · {addSuccess.category}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {expiring.length > 0 && (
         <Card className="bg-[#E98B75]/10 border-[#E98B75]/30">
           <div className="flex items-start gap-2">
@@ -653,12 +686,14 @@ export function FridgeModule() {
                   return (
                     <Card
                       key={ing.id}
-                      className={`flex items-center justify-between gap-3 ${
-                        isNew ? "border-[#F7D070] bg-[#F7D070]/10" : ""
+                      className={`space-y-2 ${
+                        isNew
+                          ? "border-[#F7D070] bg-[#F7D070]/10 animate-add-pop"
+                          : ""
                       }`}
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
                           <span className="font-medium">{ing.name}</span>
                           {isNew && (
                             <span className="text-xs px-2 py-0.5 rounded-full bg-[#F7D070] text-[#4A3E3D] font-medium">
@@ -671,90 +706,90 @@ export function FridgeModule() {
                             {getExpiryLabel(status)}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 mt-1.5">
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              disabled={updatingQuantityId === ing.id}
-                              onClick={() =>
-                                handleUpdateQuantity(
-                                  ing,
-                                  ing.quantity - getQuantityStep(ing.unit)
-                                )
-                              }
-                              className="w-7 h-7 flex items-center justify-center rounded-lg border border-[#E8DFD4] bg-white hover:border-[#F7D070] hover:bg-[#F7D070]/10 transition-colors disabled:opacity-50"
-                              title="减少"
-                            >
-                              <Minus size={14} />
-                            </button>
-                            <input
-                              type="number"
-                              min="0"
-                              step={getQuantityStep(ing.unit)}
-                              key={`${ing.id}-${ing.quantity}`}
-                              defaultValue={ing.quantity}
-                              disabled={updatingQuantityId === ing.id}
-                              onBlur={(e) =>
-                                handleUpdateQuantity(ing, Number(e.target.value))
-                              }
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.currentTarget.blur();
-                                }
-                              }}
-                              className="w-16 px-2 py-1 text-sm text-center rounded-lg border border-[#E8DFD4] bg-white focus:border-[#F7D070] outline-none disabled:opacity-50"
-                            />
-                            <button
-                              type="button"
-                              disabled={updatingQuantityId === ing.id}
-                              onClick={() =>
-                                handleUpdateQuantity(
-                                  ing,
-                                  ing.quantity + getQuantityStep(ing.unit)
-                                )
-                              }
-                              className="w-7 h-7 flex items-center justify-center rounded-lg border border-[#E8DFD4] bg-white hover:border-[#F7D070] hover:bg-[#F7D070]/10 transition-colors disabled:opacity-50"
-                              title="增加"
-                            >
-                              <Plus size={14} />
-                            </button>
-                            <span className="text-sm text-[#4A3E3D]/60 ml-0.5">
-                              {ing.unit}
-                            </span>
-                          </div>
-                          <label className="flex items-center gap-1 text-sm text-[#4A3E3D]/60 shrink-0">
-                            <span className="text-[#4A3E3D]/40">· 到期</span>
-                            <input
-                              type="date"
-                              key={`${ing.id}-${ing.expiryDate}`}
-                              defaultValue={formatDateInput(ing.expiryDate)}
-                              disabled={
-                                updatingExpiryId === ing.id ||
-                                updatingQuantityId === ing.id
-                              }
-                              onChange={(e) =>
-                                handleUpdateExpiry(ing, e.target.value)
-                              }
-                              className="px-2 py-0.5 text-sm rounded-lg border border-[#E8DFD4] bg-white focus:border-[#F7D070] outline-none disabled:opacity-50"
-                            />
-                          </label>
+                        <div className="flex gap-1 shrink-0">
+                          <button
+                            onClick={() => handleAddToRestock(ing)}
+                            className="p-2 rounded-xl hover:bg-[#F7D070]/20 transition-colors"
+                            title="加入推车"
+                          >
+                            <ShoppingCart size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(ing.id)}
+                            className="p-2 rounded-xl hover:bg-[#E98B75]/20 text-[#E98B75] transition-colors"
+                            title="删除"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </div>
                       </div>
-                      <div className="flex gap-1 shrink-0">
-                        <button
-                          onClick={() => handleAddToRestock(ing)}
-                          className="p-2 rounded-xl hover:bg-[#F7D070]/20 transition-colors"
-                          title="加入推车"
-                        >
-                          <ShoppingCart size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(ing.id)}
-                          className="p-2 rounded-xl hover:bg-[#E98B75]/20 text-[#E98B75] transition-colors"
-                          title="删除"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            disabled={updatingQuantityId === ing.id}
+                            onClick={() =>
+                              handleUpdateQuantity(
+                                ing,
+                                ing.quantity - getQuantityStep(ing.unit)
+                              )
+                            }
+                            className="w-7 h-7 flex items-center justify-center rounded-lg border border-[#E8DFD4] bg-white hover:border-[#F7D070] hover:bg-[#F7D070]/10 transition-colors disabled:opacity-50"
+                            title="减少"
+                          >
+                            <Minus size={14} />
+                          </button>
+                          <input
+                            type="number"
+                            min="0"
+                            step={getQuantityStep(ing.unit)}
+                            key={`${ing.id}-${ing.quantity}`}
+                            defaultValue={ing.quantity}
+                            disabled={updatingQuantityId === ing.id}
+                            onBlur={(e) =>
+                              handleUpdateQuantity(ing, Number(e.target.value))
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.currentTarget.blur();
+                              }
+                            }}
+                            className="w-16 px-2 py-1 text-sm text-center rounded-lg border border-[#E8DFD4] bg-white focus:border-[#F7D070] outline-none disabled:opacity-50"
+                          />
+                          <button
+                            type="button"
+                            disabled={updatingQuantityId === ing.id}
+                            onClick={() =>
+                              handleUpdateQuantity(
+                                ing,
+                                ing.quantity + getQuantityStep(ing.unit)
+                              )
+                            }
+                            className="w-7 h-7 flex items-center justify-center rounded-lg border border-[#E8DFD4] bg-white hover:border-[#F7D070] hover:bg-[#F7D070]/10 transition-colors disabled:opacity-50"
+                            title="增加"
+                          >
+                            <Plus size={14} />
+                          </button>
+                          <span className="text-sm text-[#4A3E3D]/60 ml-0.5">
+                            {ing.unit}
+                          </span>
+                        </div>
+                        <label className="flex items-center gap-1.5 text-sm text-[#4A3E3D]/60 w-full sm:w-auto">
+                          <span className="text-[#4A3E3D]/40 shrink-0">到期</span>
+                          <input
+                            type="date"
+                            key={`${ing.id}-${ing.expiryDate}`}
+                            defaultValue={formatDateInput(ing.expiryDate)}
+                            disabled={
+                              updatingExpiryId === ing.id ||
+                              updatingQuantityId === ing.id
+                            }
+                            onChange={(e) =>
+                              handleUpdateExpiry(ing, e.target.value)
+                            }
+                            className="flex-1 min-w-0 sm:flex-none sm:w-[9.5rem] px-2 py-1 text-sm rounded-lg border border-[#E8DFD4] bg-white focus:border-[#F7D070] outline-none disabled:opacity-50"
+                          />
+                        </label>
                       </div>
                     </Card>
                   );

@@ -114,10 +114,8 @@ export interface QuickIngredient {
 export const DEFAULT_QUICK_INGREDIENTS: QuickIngredient[] = [
   { name: "鸡蛋", category: "生鲜", unit: "个", addAmount: 6 },
   { name: "牛奶", category: "零食饮料", unit: "毫升", addAmount: 1000 },
-  { name: "土豆", category: "生鲜", unit: "克", addAmount: 500 },
-  { name: "番茄", category: "生鲜", unit: "克", addAmount: 500 },
-  { name: "青椒", category: "生鲜", unit: "克", addAmount: 300 },
-  { name: "大蒜", category: "生鲜", unit: "克", addAmount: 100 },
+  { name: "番茄", category: "生鲜", unit: "克", addAmount: 300 },
+  { name: "牛肉", category: "生鲜", unit: "克", addAmount: 400 },
 ];
 
 /** @deprecated use DEFAULT_QUICK_INGREDIENTS */

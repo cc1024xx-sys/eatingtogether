@@ -74,6 +74,31 @@ body {
   }
 }
 
+@keyframes toast-in {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 12px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@keyframes add-pop {
+  0% {
+    transform: scale(0.98);
+    box-shadow: 0 0 0 0 rgba(247, 208, 112, 0.45);
+  }
+  55% {
+    transform: scale(1.01);
+    box-shadow: 0 0 0 10px rgba(247, 208, 112, 0);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 .animate-fly-to-pot {
   animation: fly-to-pot 0.8s ease-in forwards;
 }
@@ -84,6 +109,14 @@ body {
 
 .animate-gentle-bounce {
   animation: gentle-bounce 2s ease-in-out infinite;
+}
+
+.animate-toast-in {
+  animation: toast-in 0.35s ease-out forwards;
+}
+
+.animate-add-pop {
+  animation: add-pop 0.55s ease-out forwards;
 }
 
 .scrollbar-hide::-webkit-scrollbar {
