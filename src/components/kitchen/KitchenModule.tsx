@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   BookOpen,
   Cake,
@@ -83,6 +83,7 @@ export function KitchenModule() {
   const [expandedRecipeCategory, setExpandedRecipeCategory] =
     useState<RecipeCategory | null>(null);
   const [editingRecipeId, setEditingRecipeId] = useState<string | null>(null);
+  const [savingRecipe, setSavingRecipe] = useState(false);
   const [planDateOffset, setPlanDateOffset] = useState(0);
 
   const planDate = useMemo(() => offsetDateString(planDateOffset), [planDateOffset]);
@@ -124,46 +125,71 @@ export function KitchenModule() {
 
   useSync(load);
 
-  const handleSaveRecipe = async () => {
-    if (!recipeForm.name.trim()) return;
+  const handleSaveRecipe = async (e?: FormEvent) => {
+    e?.preventDefault();
+    if (savingRecipe) return;
+
+    const name = recipeForm.name.trim();
+    if (!name) {
+      alert("请输入菜品名称");
+      return;
+    }
+
+    const duration = Number(recipeForm.duration);
+    if (!Number.isFinite(duration) || duration < 1) {
+      alert("请输入有效的预计时间（至少 1 分钟）");
+      return;
+    }
 
     const savedCategory = recipeForm.category;
     const payload = {
-      name: recipeForm.name,
+      name,
       category: recipeForm.category,
       difficulty: recipeForm.difficulty,
-      duration: recipeForm.duration,
+      duration,
       favorite: recipeForm.favorite,
       steps: recipeForm.steps,
       ingredients: recipeForm.ingredients
         .filter((i) => i.name.trim())
         .map((i) => ({
-          name: i.name,
-          amount: i.amount,
+          name: i.name.trim(),
+          amount: Number(i.amount) || 0,
           unit: i.unit,
           ingredientId: i.ingredientId || null,
         })),
     };
 
-    const res = await fetch("/api/recipes", {
-      method: editingRecipeId ? "PATCH" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(
-        editingRecipeId ? { id: editingRecipeId, ...payload } : payload
-      ),
-    });
+    setSavingRecipe(true);
+    try {
+      const res = await fetch("/api/recipes", {
+        method: editingRecipeId ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          editingRecipeId ? { id: editingRecipeId, ...payload } : payload
+        ),
+      });
 
-    if (!res.ok) {
-      alert(editingRecipeId ? "更新失败，请稍后重试" : "保存失败，请稍后重试");
-      return;
+      if (!res.ok) {
+        const data = await parseJsonResponse<{ error?: string }>(res, {});
+        alert(
+          data.error ||
+            (editingRecipeId ? "更新失败，请稍后重试" : "保存失败，请稍后重试")
+        );
+        return;
+      }
+
+      setRecipeForm(EMPTY_RECIPE_FORM);
+      setEditingRecipeId(null);
+      setShowRecipeForm(false);
+      setShowRecipeDetail(null);
+      setExpandedRecipeCategory(savedCategory);
+      await load();
+    } catch (error) {
+      console.error("保存菜品失败", error);
+      alert(editingRecipeId ? "更新失败，请检查网络后重试" : "保存失败，请检查网络后重试");
+    } finally {
+      setSavingRecipe(false);
     }
-
-    setRecipeForm(EMPTY_RECIPE_FORM);
-    setEditingRecipeId(null);
-    setShowRecipeForm(false);
-    setShowRecipeDetail(null);
-    setExpandedRecipeCategory(savedCategory);
-    load();
   };
 
   const handleUpdateFavorite = async (recipe: Recipe, favorite: number) => {
@@ -404,6 +430,7 @@ export function KitchenModule() {
   };
 
   const closeRecipeForm = () => {
+    if (savingRecipe) return;
     setShowRecipeForm(false);
     setEditingRecipeId(null);
     setRecipeForm(EMPTY_RECIPE_FORM);
@@ -828,8 +855,26 @@ export function KitchenModule() {
         open={showRecipeForm}
         onClose={closeRecipeForm}
         title={editingRecipeId ? "编辑菜品" : "菜品介绍"}
+        footer={
+          <Button
+            type="submit"
+            form="recipe-form"
+            className="w-full"
+            disabled={savingRecipe}
+          >
+            {savingRecipe
+              ? "保存中..."
+              : editingRecipeId
+                ? "保存修改"
+                : "保存菜品"}
+          </Button>
+        }
       >
-        <div className="space-y-3 max-h-[70vh] overflow-y-auto">
+        <form
+          id="recipe-form"
+          className="space-y-3 pb-2"
+          onSubmit={handleSaveRecipe}
+        >
           <input
             className="w-full px-4 py-2.5 rounded-2xl border-2 border-[#E8DFD4] bg-white focus:border-[#F7D070] outline-none"
             placeholder="菜品名称"
@@ -947,6 +992,7 @@ export function KitchenModule() {
               </div>
             ))}
             <Button
+              type="button"
               size="sm"
               variant="ghost"
               onClick={() =>
@@ -973,10 +1019,7 @@ export function KitchenModule() {
               }
             />
           </div>
-          <Button onClick={handleSaveRecipe} className="w-full">
-            {editingRecipeId ? "保存修改" : "保存菜品"}
-          </Button>
-        </div>
+        </form>
       </Modal>
     </div>
   );
